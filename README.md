@@ -157,22 +157,22 @@ Perfect for:
 - [ ] Multi-object classification
 - [ ] Batch processing
 
-## Blog Post
+<!--## Blog Post
 
 Read the full tutorial series on my blog:
 - **Part 1**: [Running AI Locally on iPhone — No Cloud Needed](YOUR_BLOG_URL/ios-coreml)
-- **Part 2**: [On-Device AI with Android + TensorFlow Lite](YOUR_BLOG_URL/android-tflite) (Coming soon)
+- **Part 2**: [On-Device AI with Android + TensorFlow Lite](YOUR_BLOG_URL/android-tflite) (Coming soon) -->
 
 ## License
 
 MIT License - feel free to use this project for learning and building your own on-device AI apps!
 
-## Author
+<!--## Author
 
 **Divya Jain**
 - Blog: [Mobile With Me](https://deevaa-portfolio.vercel.app/blog)
 - LinkedIn: [Your LinkedIn](YOUR_LINKEDIN_URL)
-- GitHub: [@djain2405](https://github.com/djain2405)
+- GitHub: [@djain2405](https://github.com/djain2405) -->
 
 ## Acknowledgments
 
