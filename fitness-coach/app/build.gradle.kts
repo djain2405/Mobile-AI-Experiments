@@ -14,8 +14,8 @@ android {
         // whole app, not just the AI feature, to keep the build config simple.
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.4.0" // On-Device Fitness Coach blog Part 4
+        versionCode = 2
+        versionName = "0.5.0" // On-Device Fitness Coach blog Part 5
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -65,7 +65,7 @@ dependencies {
 
     // ML Kit GenAI Prompt API — the current, production path to Gemini Nano on-device.
     // Beta: pin this exact version, watch the ML Kit release notes before bumping it.
-    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

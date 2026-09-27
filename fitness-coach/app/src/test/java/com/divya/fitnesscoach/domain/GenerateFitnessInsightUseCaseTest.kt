@@ -3,6 +3,7 @@ package com.divya.fitnesscoach.domain
 import com.divya.fitnesscoach.data.FakeInsightEngine
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -23,13 +24,21 @@ class GenerateFitnessInsightUseCaseTest {
     }
 
     @Test
-    fun `propagates unavailable from the engine`() = runTest {
+    fun `maps unavailable from the engine to fallback`() = runTest {
         val engine = FakeInsightEngine(response = FitnessInsightResult.Unavailable)
         val useCase = GenerateFitnessInsightUseCase(engine)
+        val summary =
+            "Active days: 4 of the last 7\n" +
+                "Average workout duration: 31 minutes\n" +
+                "Most consistent range: 20–35 minutes\n" +
+                "Rest days: 3"
 
-        val result = useCase("Workouts: Mon 30min")
+        val result = useCase(summary)
 
-        assertEquals(FitnessInsightResult.Unavailable, result)
+        val expected = FitnessInsightResult.Fallback(
+            RuleBasedFitnessInsight.insightFor(ActivitySummary.createOrNull(summary)!!)
+        )
+        assertEquals(expected, result)
     }
 
     @Test
@@ -63,5 +72,17 @@ class GenerateFitnessInsightUseCaseTest {
         val result = useCase("Workouts: Mon 30min")
 
         assertEquals(FitnessInsightResult.Failed(FitnessInsightFailure.DeviceUnsupported), result)
+    }
+
+    @Test
+    fun `does not fall back on Failed results`() = runTest {
+        val engine = FakeInsightEngine(
+            response = FitnessInsightResult.Failed(FitnessInsightFailure.GenerationFailed)
+        )
+        val useCase = GenerateFitnessInsightUseCase(engine)
+
+        val result = useCase("Workouts: Mon 30min")
+
+        assertTrue(result is FitnessInsightResult.Failed)
     }
 }

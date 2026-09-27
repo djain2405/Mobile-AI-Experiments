@@ -28,9 +28,10 @@ class FakeInsightEngine(
     }
 
     companion object {
+        /** Matches the Demo Part 1 expected on-stage insight. */
         val defaultSuccess = FitnessInsightResult.Success(
-            "You've been most consistent on days when your workouts stayed under " +
-                "35 minutes, a shorter session tomorrow may help you keep the streak."
+            "Your shorter workouts have been easier to sustain. A 25-minute session " +
+                "tomorrow may help you keep the rhythm going."
         )
     }
 }

@@ -14,9 +14,9 @@ package com.divya.fitnesscoach.domain
  *  - [com.divya.fitnesscoach.data.FakeInsightEngine], used for previews, tests, and
  *    development on hardware that doesn't support Gemini Nano (including emulators).
  *
- * What this interface deliberately does NOT do yet: retries, cloud fallback, or
- * confidence scoring. That belongs in a later post on confidence and fallbacks. For now, [FitnessInsightResult.Unavailable]
- * and [FitnessInsightResult.Failed] are as far as failure handling goes.
+ * Rule-based product [FitnessInsightResult.Fallback] when the model is unavailable
+ * lives in [GenerateFitnessInsightUseCase], not here. What this interface
+ * deliberately does NOT do yet: retries, cloud fallback, or confidence scoring.
  */
 interface FitnessInsightEngine {
 

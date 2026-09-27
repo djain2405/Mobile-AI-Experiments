@@ -11,7 +11,8 @@ fun FitnessInsightFailure.toUserMessage(): String = when (this) {
     FitnessInsightFailure.TemporarilyUnavailable ->
         "On-device AI is busy right now, try again in a moment."
     FitnessInsightFailure.DeviceUnsupported ->
-        "On-device AI isn't supported on this device."
+        "On-device AI isn't ready on this device yet. If this is a supported Pixel, " +
+            "connect to Wi‑Fi, wait a few minutes for AICore to finish setup, then try again."
     FitnessInsightFailure.InsufficientStorage ->
         "Not enough storage available to run on-device AI right now."
     FitnessInsightFailure.GenerationFailed ->

@@ -2,7 +2,9 @@ package com.divya.fitnesscoach.domain
 
 /**
  * The one entry point the ViewModel calls. Everything about *how* an insight gets
- * generated lives behind [engine]; this use case just orchestrates the call.
+ * generated lives behind [engine]; this use case just orchestrates the call and
+ * maps model-unavailable into a rule-based [FitnessInsightResult.Fallback] so the
+ * product path stays usable (Demo Part 6).
  *
  * Expected product conditions become state, not exceptions: an invalid summary
  * returns [FitnessInsightResult.InvalidInput] rather than throwing, so a coroutine
@@ -17,6 +19,10 @@ class GenerateFitnessInsightUseCase(
         val summary = ActivitySummary.createOrNull(rawActivitySummary)
             ?: return FitnessInsightResult.InvalidInput
 
-        return engine.generateInsight(summary)
+        return when (val result = engine.generateInsight(summary)) {
+            is FitnessInsightResult.Unavailable ->
+                FitnessInsightResult.Fallback(RuleBasedFitnessInsight.insightFor(summary))
+            else -> result
+        }
     }
 }

@@ -1,12 +1,12 @@
 package com.divya.fitnesscoach.data
 
+import android.util.Log
 import com.divya.fitnesscoach.domain.ActivitySummary
 import com.divya.fitnesscoach.domain.FitnessInsightEngine
 import com.divya.fitnesscoach.domain.FitnessInsightFailure
 import com.divya.fitnesscoach.domain.FitnessInsightResult
 import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.common.GenAiException
-import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.GenerativeModel
 import com.google.mlkit.genai.prompt.TextPart
 import com.google.mlkit.genai.prompt.generateContentRequest
@@ -18,74 +18,72 @@ import com.google.mlkit.genai.prompt.generateContentRequest
  * uses today," not a claim that the API surface is frozen.
  *
  * Requires a Gemini Nano-supported device (e.g. Pixel 9/10 or another device on ML
- * Kit's supported list). It will NOT run on an emulator, emulators aren't on the
- * supported device list. On one, [generateInsight] correctly returns
- * [FitnessInsightResult.Unavailable], which is exactly how the unsupported-device
- * state gets verified without needing real hardware. Use [FakeInsightEngine] for
- * previews, tests, and everyday development.
+ * Kit's supported list). It will NOT run on an emulator. On unsupported hardware,
+ * [generateInsight] returns [FitnessInsightResult.Unavailable], which the use case
+ * maps to rule-based [FitnessInsightResult.Fallback].
+ *
+ * Checking, downloading, and warming up the model belong to
+ * [GeminiNanoAiReadinessManager], which shares this [model]. The status check below
+ * is only a guard in case the runtime changed after readiness said Ready.
  *
  * Note on system instructions: ML Kit's dedicated `SystemInstruction` type currently
- * requires Gemini Nano V3+, so a device could support the Prompt API generally without
- * supporting that specific feature. To keep this sample working across more supported
- * devices, the coaching behavior is folded directly into the prompt text instead of
- * using `SystemInstruction`.
- *
- * This class deliberately does not retry, fall back to cloud, or apply confidence
- * scoring, that reliability layer belongs in a later post.
+ * requires Gemini Nano V3+, so coaching behavior is folded into the prompt text.
  */
-class GeminiNanoInsightEngine : FitnessInsightEngine {
-
-    private val model: GenerativeModel = Generation.getClient()
-
-    private val instructionPreamble =
-        "You are a supportive, non-diagnostic fitness coach. Given a short summary " +
-            "of someone's recent activity, respond with exactly one short, encouraging " +
-            "sentence noticing a pattern and suggesting a reasonable next step. Never " +
-            "give medical, injury, or nutrition advice.\n\nActivity summary: "
+class GeminiNanoInsightEngine(
+    private val model: GenerativeModel
+) : FitnessInsightEngine {
 
     override suspend fun generateInsight(summary: ActivitySummary): FitnessInsightResult {
         return try {
             when (model.checkStatus()) {
+                FeatureStatus.AVAILABLE -> generateFromSummary(summary)
+
+                FeatureStatus.DOWNLOADABLE,
+                FeatureStatus.DOWNLOADING,
                 FeatureStatus.UNAVAILABLE -> FitnessInsightResult.Unavailable
-
-                FeatureStatus.DOWNLOADABLE, FeatureStatus.DOWNLOADING -> {
-                    // A later post on model lifecycle is where downloading gets its own state
-                    // and UI. For this milestone, an in-progress or not-yet-started
-                    // download is just reported as unavailable.
-                    FitnessInsightResult.Unavailable
-                }
-
-                FeatureStatus.AVAILABLE -> {
-                    val request = generateContentRequest(
-                        TextPart(instructionPreamble + summary.value)
-                    ) {
-                        temperature = 0.4f
-                    }
-                    val response = model.generateContent(request)
-                    val text = response.candidates.firstOrNull()?.text
-
-                    if (text.isNullOrBlank()) {
-                        FitnessInsightResult.Failed(FitnessInsightFailure.GenerationFailed)
-                    } else {
-                        FitnessInsightResult.Success(text.trim())
-                    }
-                }
 
                 else -> FitnessInsightResult.Unavailable
             }
         } catch (e: GenAiException) {
+            Log.w(TAG, "GenAI call failed: code=${e.errorCode}", e)
             FitnessInsightResult.Failed(mapToFailureReason(e))
         }
     }
 
-    /**
-     * Maps SDK-specific error codes to a stable, UI-safe reason. Never forward
-     * [GenAiException.getMessage] to the UI, log it privately for debugging instead.
-     *
-     * Note: verify these ErrorCode constants against the ML Kit version you're
-     * building against, this mapping only needs to be broadly right for the
-     * architecture to hold, the exact code list may shift across Beta releases.
-     */
+    private suspend fun generateFromSummary(summary: ActivitySummary): FitnessInsightResult {
+        val prompt = """
+            You are a supportive fitness reflection assistant.
+
+            Based only on the activity summary:
+            - Return one concise observation
+            - Suggest one realistic next step
+            - Use no more than two sentences
+            - Do not diagnose, prescribe, or make medical claims
+
+            Activity summary:
+            ${summary.value}
+        """.trimIndent()
+
+        val request = generateContentRequest(TextPart(prompt)) {
+            temperature = 0.4f
+        }
+        val response = model.generateContent(request)
+        val text = response.candidates.firstOrNull()?.text?.trim()
+
+        return if (text.isNullOrBlank() || !isAcceptableInsight(text)) {
+            // Product refuses to treat blank / overlong output as a real result.
+            // Use case will not turn Failed into Fallback — blank is a generation miss.
+            FitnessInsightResult.Failed(FitnessInsightFailure.GenerationFailed)
+        } else {
+            FitnessInsightResult.Success(text)
+        }
+    }
+
+    /** Tiny gate so generated text is not automatically a product result. */
+    private fun isAcceptableInsight(text: String): Boolean {
+        return text.length in 20..500
+    }
+
     private fun mapToFailureReason(e: GenAiException): FitnessInsightFailure {
         return when (e.errorCode) {
             GenAiException.ErrorCode.BUSY ->
@@ -102,5 +100,9 @@ class GeminiNanoInsightEngine : FitnessInsightEngine {
 
     override fun close() {
         model.close()
+    }
+
+    companion object {
+        private const val TAG = "GeminiNanoEngine"
     }
 }

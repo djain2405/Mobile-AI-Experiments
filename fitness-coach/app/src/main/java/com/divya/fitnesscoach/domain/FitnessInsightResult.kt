@@ -3,22 +3,28 @@ package com.divya.fitnesscoach.domain
 /**
  * What comes back from asking for a coaching insight.
  *
- * Expected product conditions become state here (Unavailable, InvalidInput, Failed).
- * Unexpected programming errors, a real bug, still throw, this type is only for
- * outcomes the caller should be able to plan for.
+ * Expected product conditions become state here (Unavailable, InvalidInput, Failed,
+ * Fallback). Unexpected programming errors, a real bug, still throw, this type is
+ * only for outcomes the caller should be able to plan for.
  *
- * A real confidence/relevance/safety check on [Success] belongs in a later post on confidence and fallbacks, not here,
- * this is just enough shape for the UI to render something honest today.
+ * Engines may still return [Unavailable]; [GenerateFitnessInsightUseCase] maps that
+ * into [Fallback] so the product still offers rule-based coaching.
  */
 sealed interface FitnessInsightResult {
 
-    /** A short, supportive coaching insight, ready to show as-is. */
+    /** A short, supportive coaching insight from the on-device model, ready to show as-is. */
     data class Success(val insight: String) : FitnessInsightResult
 
     /**
+     * Deterministic rule-based coaching used when the model is unavailable.
+     * Produced by the use case, not by engines. The UI shows the unavailable notice
+     * and this suggestion together (Demo Part 6).
+     */
+    data class Fallback(val insight: String) : FitnessInsightResult
+
+    /**
      * Gemini Nano isn't available on this device or hasn't finished downloading.
-     * On an emulator, the real engine returns this, which is exactly how the
-     * unsupported-device state gets verified without needing real hardware.
+     * Engines return this; the use case converts it to [Fallback] for the UI.
      */
     data object Unavailable : FitnessInsightResult
 
